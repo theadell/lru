@@ -1,10 +1,10 @@
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -12,7 +12,9 @@
 #define SV_IMPLEMENTATION
 #include "sv.h"
 #include <assert.h>
-typedef struct { char data[32]; } Word;
+typedef struct {
+  char data[32];
+} Word;
 
 Word sv_as_word(String_View sv) {
   Word word = {0};
@@ -21,8 +23,7 @@ Word sv_as_word(String_View sv) {
   return word;
 }
 
-Word word_norm(Word word)
-{
+Word word_norm(Word word) {
   Word result = {0};
   char *in = word.data;
   char *out = result.data;
@@ -33,6 +34,34 @@ Word word_norm(Word word)
     }
   }
   return result;
+}
+
+// EXPENSIVE OPERATION
+size_t word_count(String_View content, Word needle) {
+  size_t count = 0;
+  while (content.count > 0) {
+    String_View line = sv_chop_by_delim(&content, '\n');
+    while (line.count > 0) {
+      String_View word_sv = sv_trim(sv_chop_by_delim(&line, ' '));
+      if (word_sv.count > 0) {
+        Word word = word_norm((sv_as_word(word_sv)));
+        if (strcmp(word.data, needle.data)) {
+          count++;
+        }
+      }
+    }
+  }
+  return count;
+}
+
+bool cache_get(Word word, size_t *freq) {
+  (void)word;
+  (void)freq;
+  return false;
+}
+void cache_put(Word word, size_t freq) {
+  (void)word;
+  (void)freq;
 }
 
 int main(int argc, char **argv) {
@@ -74,11 +103,15 @@ int main(int argc, char **argv) {
   while (content.count > 0) {
     String_View line = sv_chop_by_delim(&content, '\n');
     while (line.count > 0) {
-      String_View word_sv = sv_trim(sv_chop_by_delim(&line, ' '));
-      if (word_sv.count > 0) {
-       printf("(%s)\n",word_norm(sv_as_word(word_sv)).data);
+      String_View word_orig = sv_trim(sv_chop_by_delim(&line, ' '));
+      if (word_orig.count > 0) {
+        Word needle = word_norm(sv_as_word(word_orig));
+        size_t freq =
+            word_count(sv_from_parts(content_data, content_size), needle);
+        printf(SV_Fmt "(%zu) ", SV_Arg(word_orig), freq);
       }
     }
+    printf("\n");
   }
 
   munmap(content_data, content_size);
