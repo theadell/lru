@@ -8,6 +8,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#define SV_IMPLEMENTATION
+#include "sv.h"
+
+
 int main(int argc, char **argv) {
 
   const char *program = *argv++;
@@ -41,7 +45,19 @@ int main(int argc, char **argv) {
             strerror(errno));
     exit(1);
   }
-  fwrite(content_data, content_size, 1, stdout);
+
+  String_View content = sv_from_parts(content_data, content_size);
+
+  while (content.count > 0) {
+    String_View line = sv_chop_by_delim(&content, '\n');
+    while (line.count > 0) {
+      String_View word = sv_trim(sv_chop_by_delim(&line, ' '));
+      if (word.count > 0) {
+
+        printf("(" SV_Fmt ")\n", SV_Arg(word));
+      }
+    }
+  }
 
   munmap(content_data, content_size);
   close(fd);
