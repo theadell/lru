@@ -4,13 +4,36 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 #define SV_IMPLEMENTATION
 #include "sv.h"
+#include <assert.h>
+typedef struct { char data[32]; } Word;
 
+Word sv_as_word(String_View sv) {
+  Word word = {0};
+  assert(sv.count < sizeof(word.data));
+  memcpy(word.data, sv.data, sv.count);
+  return word;
+}
+
+Word word_norm(Word word)
+{
+  Word result = {0};
+  char *in = word.data;
+  char *out = result.data;
+  while (*in) {
+    char c = *in++;
+    if (isalnum(c)) {
+      *out++ = toupper(c);
+    }
+  }
+  return result;
+}
 
 int main(int argc, char **argv) {
 
@@ -51,10 +74,9 @@ int main(int argc, char **argv) {
   while (content.count > 0) {
     String_View line = sv_chop_by_delim(&content, '\n');
     while (line.count > 0) {
-      String_View word = sv_trim(sv_chop_by_delim(&line, ' '));
-      if (word.count > 0) {
-
-        printf("(" SV_Fmt ")\n", SV_Arg(word));
+      String_View word_sv = sv_trim(sv_chop_by_delim(&line, ' '));
+      if (word_sv.count > 0) {
+       printf("(%s)\n",word_norm(sv_as_word(word_sv)).data);
       }
     }
   }
