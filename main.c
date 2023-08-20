@@ -12,6 +12,7 @@
 #define SV_IMPLEMENTATION
 #include "sv.h"
 #include <assert.h>
+
 typedef struct {
   char data[32];
 } Word;
@@ -54,6 +55,9 @@ size_t word_count(String_View content, Word needle) {
   return count;
 }
 
+#define NOCACHE 
+
+#ifdef NOCACHE
 bool cache_get(Word word, size_t *freq) {
   (void)word;
   (void)freq;
@@ -63,6 +67,8 @@ void cache_put(Word word, size_t freq) {
   (void)word;
   (void)freq;
 }
+#else 
+#endif
 
 int main(int argc, char **argv) {
 
@@ -106,8 +112,11 @@ int main(int argc, char **argv) {
       String_View word_orig = sv_trim(sv_chop_by_delim(&line, ' '));
       if (word_orig.count > 0) {
         Word needle = word_norm(sv_as_word(word_orig));
-        size_t freq =
-            word_count(sv_from_parts(content_data, content_size), needle);
+        size_t freq = 0;
+        if (!cache_get(needle, &freq)) {
+          freq = word_count(sv_from_parts(content_data, content_size), needle);
+          cache_put(needle, freq);
+        }
         printf(SV_Fmt "(%zu) ", SV_Arg(word_orig), freq);
       }
     }
